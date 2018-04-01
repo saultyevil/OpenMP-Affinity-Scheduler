@@ -1,0 +1,128 @@
+\documentclass[11pt, a4paper]{article}
+
+\usepackage{fancyhdr} 					  % header and footer tools for the page style
+\usepackage{hyperref} 					  % adds hyperlinks to navigate the document
+\usepackage{graphicx} 					  % provides extra arguments for \includegraphics[keyvals]{imagefile}
+\usepackage[margin=2.2cm]{geometry}		  % modify the geometry of the document
+\usepackage[hang,flushmargin]{footmisc}   % modify footnotes - used here to remove the footnote indentation
+\usepackage{minted}                       % insert code
+\usepackage{afterpage}					  % put figures after a page
+\usepackage{rotating}					  % rotate a figure
+
+% remove the footnote rule
+\renewcommand*\footnoterule{}
+
+
+\begin{document}
+
+	\title{Advanced Computational Methods II: OpenMP Parallelisation}
+	\author{Edward John Parkinson}
+	\maketitle	
+	
+	\section{Introduction}
+		The aim of this report is to compare the performance of OpenMP's (OMP) parallel loops scheduling methods, and also, an alternative affinity scheduling algorithm which has been developed as part of this coursework. The different scheduling methods are benchmarked on the ARCHER supercomputer, typically using six threads. The performance gain/losses of the number of chunks per thread is explored using 1, 2, 4, 8, 16, 32 and 64 chunks for the \texttt{static}, \texttt{dynamic} and \texttt{guided} schedules. Finally, the schedules which result in the greatest speed up are examined in further detail, where the speed up gained with the number of threads in use is compared.
+		
+		The schedules are benchmarked against two loops; exerts of these loops can be found in Fig. \ref{fig:loop_code}. The performance is benchmarked through comparison of the runtime required to execute the loops 100 times. Both loops provide tests for loops with unbalanced workloads as the size of inner loops varies in size depending on the current iteration of the outer loop. However, whereas loop 1 provides a fairly predictable imbalance (as the inner loop gets smaller for larger iterations of the outer loop), loop 2's imbalance is less predictable; the work imbalance for the first inner loop for both loops is shown graphically in Fig \ref{fig:loop_balance}. Hence, due to the difference in work balancing, we can expect both loops to perform differently for different scheduling methods.
+
+		\begin{figure}
+			\centering
+			\includegraphics[scale=0.33]{./results/loop_balance.pdf}
+			\caption{The y-axis shows the number of iterations to be done for the first inner loops of loop 1 and loop 2. Loop 1 has a predictable balance whereas loop 2 is less predictable. For low values of \texttt{i} in loop 2, the number of iterations is generally large but as \texttt{i} increases, the frequency of a large amount of large iterations occurring decreases.}
+			\label{fig:loop_balance}
+		\end{figure}
+
+		\begin{figure*}
+			\begin{minted}[frame=lines, framesep=2mm, gobble=4]{C}
+				void loop1(void)
+				{
+					// parallelise this outer loop
+					for (int i = 0; i < N; i++)
+					{
+						for (int j = N - 1; j > i; j--)
+						{
+							a[i][j] += cos(b[i][j]);
+						}
+					}
+				}
+			\end{minted}
+			
+			\begin{minted}[frame=lines, framesep=2mm, gobble=4]{C}
+				void loop2(void)
+				{
+					double rN2 = 1.0/(double)(N * N);
+	
+					// parallelise this outer loop
+					for (int i = 0; i < N; i++)
+					{
+						for (int j = 0; j < jmax[i]; j++)
+						{
+							for (int k = 0; k < j; k++)
+							{
+								c[i] += (k + 1) * log (b[i][j]) * rN2;
+							}
+						}
+					}
+				}
+			\end{minted}
+			\caption{The two benchmark loops being used. Both loops provide an unbalanced workload.}
+			\label{fig:loop_code}
+		\end{figure*}
+			
+	\section{OpenMP Scheduling}
+		In this section, I will discuss my findings on the execution times for the different scheduling methods provided in OMP. All tests were ran on ARCHER using six threads. To enable parallel computation, the OMP command, \mint{c}{#pragma omp parallel for default(none), schedule(runtime), ...} \noindent is used on the outer-most loops of each loop function; see Fig. \ref{fig:loop_code}. Using \texttt{schedule(runtime)} allows the choice of schedule to be decided at code runtime, instead of at compile time, by setting the OMP environment variable \texttt{OMP\char`_SCHEDULE=schedule,chunk\char`_size}, where \texttt{schedule} is either \texttt{static}, \texttt{dynamic}, \texttt{guided} or \texttt{auto}. If \texttt{chunk\char`_size} is not set, a default value of $1$ is used instead.
+	
+		\subsection{Static and Auto}
+			The first two tests conducted used the \texttt{static} schedule with no defined chunksize and the \texttt{auto} schedule. When no chunksize is defined for \texttt{static}, the iterations are split as evenly as possible between all threads; this is good for evenly balanced loops. The \texttt{auto} scheduler allows the compiler to decide the scheduling method to use and also allows the possibility of the scheduling method to change during runtime. Thus, if a loop has a large amount of iterations, this allows the scheduling to evolve to a method with good workload balance and low overheads. However, one must be careful when using \texttt{auto} as some compilers, such as \texttt{gcc}, are unable to decide on a scheduling method and will map \texttt{auto} to another scheduling method, such as \texttt{static}. The results for these tests are shown in Fig. \ref{fig:static_auto}.
+			
+			\begin{figure}
+				\centering
+				\includegraphics[scale=0.4]{./results/static_auto.pdf}
+				\caption{\textbf{Left:} runtime for loop 1 and 2 using static scheduling and serial execution. \textbf{Right:} runtime for loop 1 and 2 using auto scheduling and serial execution.}
+				\label{fig:static_auto}
+			\end{figure}
+			
+			\subsubsection{Static}
+				With static scheduling, there is an increase in runtime for loop 1. This is due to the uneven workload of each thread. Some threads will require more time to finish their work, whereas some threads will have completed their iterations whilst the other threads are still working. This results in these threads having to wait for the other threads to finish. The resulting overhead of scheduling the loop and synchronising the threads at the end of the loop results in an increased runtime over the serial execution of the same loop. However, \texttt{static} decreased the runtime for loop 2. This, again, is due to the balance of the workload between threads. The thread which is assigned to the first 30 iterations of the parallelised outer loop will take longer to complete its iterations than the other threads, but, as shown in Fig. \ref{fig:loop_balance}, the distribution of long inner loops is such that the other threads will receive similar workloads. Hence, for the other threads, the work balance is only mildly imbalanced and thus the \texttt{static} schedule provides some speed up.
+				
+			\subsubsection{Auto}
+				In both loops, the runtime was decreased with the use of the \texttt{auto} schedule. However, the performance gain introduced for loop 1 is not as large as the performance gain for loop 2. The lower performance gain for loop 1 is due to the overheads related to finding and using the best schedule to use for loop 1; the runtime introduced due to the overhead will be comparable to the execution time of the loop. The runtime for loop 2 is decreased by just over 50\%, which indicates that \texttt{auto} was able to find a scheduling method with low overheads. However, it must be noted that, as will be seen later in \S\ref{sect:chunksize}, the performance gain of the \texttt{auto} schedule is not as good as choosing a suitable schedule, even when using a \texttt{static} schedule with $N/p$ chunksize.
+		
+		\subsection{Chunksize} \label{sect:chunksize}
+			For these tests the chunksize for the \texttt{static}, \texttt{dynamic} and \texttt{guided} schedules is changed to investigate the relationship between runtime and chunksize. As before, the tests were conducted using six threads on ARCHER. The results for these tests can be found in Fig. \ref{fig:chunksize}. 
+		
+		
+			\begin{figure}
+				\centering
+				\includegraphics[angle=90, scale=0.5]{./results/chunksize.pdf}
+				\caption{The execution time against the chunksize of the \texttt{static}, \texttt{dynamic} and \texttt{guided} schedulers for loop 1 and loop 2.}
+				\label{fig:chunksize}
+			\end{figure}
+			
+			\subsubsection{Loop 1} \label{sect:loop1_chunks}
+
+			\subsubsection{Loop 2} \label{sect:loop2_chunks}
+			
+		
+		\subsection{Number of Threads}
+			In \S\ref{sect:loop1_chunks} and \S\ref{sect:loop2_chunks} it was found that the best schedule for six threads for loop 1 is \texttt{guided, 4} and \texttt{dynamic, 8} for loop 2. In this section, I compare the speed up for these schedules compared to the number of threads in use. The results for these tests are in Fig. \ref{fig:n_threads}.
+			
+			\begin{figure}
+				\centering
+				\includegraphics[angle=90, scale=0.5]{./results/speedup.pdf}
+				\caption{The speed up ratio, $T_{1}/T_{p}$, against the number of threads of the \texttt{guided, 4} and \texttt{dynamic, 8} schedulers for loop 1 and loop 2. The red line corresponds to base performance, i.e. serial execution.}
+				\label{fig:n_threads}
+			\end{figure}
+			
+	
+	
+	\section{Affinity Scheduler}
+		\subsection{Introduction}
+		
+		\subsection{Implementation}
+		
+		\subsection{Performance}
+		
+	
+	\section{Conclusion}
+			
+\end{document}
