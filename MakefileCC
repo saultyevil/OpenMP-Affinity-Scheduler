@@ -1,0 +1,20 @@
+# Helpful macros
+TARGET_EXEC ?= loops_affinity
+
+# Macros for CC
+CC = cc
+CFLAGS = -O3
+LIBS =
+
+SRC = ./source/affinity.c \
+	  ./source/affinity_main.c \
+	  ./source/loops.c \
+	  ./source/output_file.c
+
+# Compile the source
+$(TARGET_EXEC): $(SRC)
+	$(CC) $(SRC) $(CFLAGS) $(LIBS) -o $@
+
+
+
+
