@@ -8,7 +8,7 @@ void print_int_array(int *array, char var_name[])
   printf("%s\n", var_name);
   for (int i = 0; i < n_threads; i++)
   {
-    printf("%d\n", *(array+i));
+    printf("%d ", array[i]);
   }
-  printf("\n");
+  printf("\n\n");  // spacer to make the output slightly more readable
 }

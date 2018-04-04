@@ -7,7 +7,7 @@ int output_runtime(int n_threads, double loop1_time, double loop2_time)
 {
 
     FILE *out_f;
-    
+
     if ((out_f = fopen("time_output.txt", "a")) == NULL)
     {
         printf("Cannot open output file. Exiting.");

@@ -5,13 +5,13 @@
 
 /* **************************************************************************
  *
- * Any OpenMP variables, i.e. number of threads, schedule type, chunk size,
- * are set via the environment variables OMP_NUM_THREADS and OMP_SCHEDULE.
- * The different kinds of schedule are defined below, as in omp.h.
+ * The number of threads can be defined using the OpenMP envrionment variable
+ * OMP_NUM_THREADS.
  *
- * Sometimes the program seg faults before it even reaches the loop repetitions
- * on OS X, but not on Ubuntu or ARCHER. But it works if you try to run it a
- * few times ¯\_(ツ)_/¯
+ * Sometimes the program seg faults before it even reaches the loop
+ * repetitions on OS X, but not on Ubuntu or ARCHER. But it works if you try
+ * to run it a few times ¯\_(ツ)_/¯ -- turns out it was something to do with
+ * my Makefile and it should work no with no issues.
  *
  * ************************************************************************** */
 

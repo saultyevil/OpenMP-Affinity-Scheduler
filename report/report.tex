@@ -12,7 +12,6 @@
 % remove the footnote rule
 \renewcommand*\footnoterule{}
 
-
 \begin{document}
 
 	\title{Advanced Computational Methods II: OpenMP Parallelisation}
@@ -20,16 +19,11 @@
 	\maketitle	
 	
 	\section{Introduction}
-		The aim of this report is to compare the performance of OpenMP's (OMP) parallel loops scheduling methods, and also, an alternative affinity scheduling algorithm which has been developed as part of this coursework. The different scheduling methods are benchmarked on the ARCHER supercomputer, typically using six threads. The performance gain/losses of the number of chunks per thread is explored using 1, 2, 4, 8, 16, 32 and 64 chunks for the \texttt{static}, \texttt{dynamic} and \texttt{guided} schedules. Finally, the schedules which result in the greatest speed up are examined in further detail, where the speed up gained with the number of threads in use is compared.
+		The aim of this report is to compare the performance of OpenMP's (OMP) parallel loops scheduling methods, and also, an alternative affinity scheduling algorithm which has been developed as part of this coursework. The different scheduling methods are benchmarked on the ARCHER supercomputer, typically using six threads. The performance gain/losses of the number of chunks per thread is explored using 1, 2, 4, 8, 16, 32 and 64 chunks for the \texttt{static}, \texttt{dynamic} and \texttt{guided}  schedules. Finally, the schedules which result in the greatest speed up are examined in further detail, where the speed up gained with the number of threads in use is compared.
 		
 		The schedules are benchmarked against two loops; exerts of these loops can be found in Fig. \ref{fig:loop_code}. The performance is benchmarked through comparison of the runtime required to execute the loops 100 times. Both loops provide tests for loops with unbalanced workloads as the size of inner loops varies in size depending on the current iteration of the outer loop. However, whereas loop 1 provides a fairly predictable imbalance (as the inner loop gets smaller for larger iterations of the outer loop), loop 2's imbalance is less predictable; the work imbalance for the first inner loop for both loops is shown graphically in Fig \ref{fig:loop_balance}. Hence, due to the difference in work balancing, we can expect both loops to perform differently for different scheduling methods.
-
-		\begin{figure}
-			\centering
-			\includegraphics[scale=0.33]{./results/loop_balance.pdf}
-			\caption{The y-axis shows the number of iterations to be done for the first inner loops of loop 1 and loop 2. Loop 1 has a predictable balance whereas loop 2 is less predictable. For low values of \texttt{i} in loop 2, the number of iterations is generally large but as \texttt{i} increases, the frequency of a large amount of large iterations occurring decreases.}
-			\label{fig:loop_balance}
-		\end{figure}
+		 
+		\textit{All code will be compiled using the \texttt{-O3} optimisation flag. The average runtime for the serial execution of loop 1 is 0.045 seconds and loop 2 is 0.604 seconds, using the Cray Compiler (CC) on ARCHER. All runtimes for the scheduling methods used are computed by taking the average runtime of ten runs.}
 
 		\begin{figure*}
 			\begin{minted}[frame=lines, framesep=2mm, gobble=4]{C}
@@ -67,60 +61,102 @@
 			\caption{The two benchmark loops being used. Both loops provide an unbalanced workload.}
 			\label{fig:loop_code}
 		\end{figure*}
+	
+		\begin{figure}
+			\centering
+			\includegraphics[scale=0.33]{./results/loop_balance.pdf}
+			\caption{The y-axis shows the number of iterations to be done for the first inner loops of loop 1 and loop 2. Loop 1 has a predictable balance whereas loop 2 is less predictable. For low values of \texttt{i} in loop 2, the number of iterations is generally large but as \texttt{i} increases, the frequency of a large amount of large iterations occurring decreases.}
+			\label{fig:loop_balance}
+		\end{figure}
 			
-	\section{OpenMP Scheduling}
-		In this section, I will discuss my findings on the execution times for the different scheduling methods provided in OMP. All tests were ran on ARCHER using six threads. To enable parallel computation, the OMP command, \mint{c}{#pragma omp parallel for default(none), schedule(runtime), ...} \noindent is used on the outer-most loops of each loop function; see Fig. \ref{fig:loop_code}. Using \texttt{schedule(runtime)} allows the choice of schedule to be decided at code runtime, instead of at compile time, by setting the OMP environment variable \texttt{OMP\char`_SCHEDULE=schedule,chunk\char`_size}, where \texttt{schedule} is either \texttt{static}, \texttt{dynamic}, \texttt{guided} or \texttt{auto}. If \texttt{chunk\char`_size} is not set, a default value of $1$ is used instead.
+	\section{OpenMP's Default Scheduler}
+		In this section, I will discuss my findings on the execution times for the different scheduling methods provided by OMP. All tests were ran on ARCHER, typically using six threads. To enable parallel computation, the OMP command, \mint{c}{#pragma omp parallel for default(none), schedule(runtime), ...} \noindent is used on the outer-most loops of each loop function; see Fig. \ref{fig:loop_code}. Using \texttt{schedule(runtime)} allows the choice of schedule to be decided at code runtime, instead of at compile time, by setting the OMP environment variable \texttt{OMP\char`_SCHEDULE=schedule,chunk\char`_size}, where \texttt{schedule} is either \texttt{static}, \texttt{dynamic}, \texttt{guided}  or \texttt{auto}. If \texttt{chunk\char`_size} is not set, a default value of $1$ is used instead, except in the case of \texttt{static} where the work is split as equally as possible between threads.
 	
 		\subsection{Static and Auto}
-			The first two tests conducted used the \texttt{static} schedule with no defined chunksize and the \texttt{auto} schedule. When no chunksize is defined for \texttt{static}, the iterations are split as evenly as possible between all threads; this is good for evenly balanced loops. The \texttt{auto} scheduler allows the compiler to decide the scheduling method to use and also allows the possibility of the scheduling method to change during runtime. Thus, if a loop has a large amount of iterations, this allows the scheduling to evolve to a method with good workload balance and low overheads. However, one must be careful when using \texttt{auto} as some compilers, such as \texttt{gcc}, are unable to decide on a scheduling method and will map \texttt{auto} to another scheduling method, such as \texttt{static}. The results for these tests are shown in Fig. \ref{fig:static_auto}.
+			The first two tests conducted used the \texttt{static}~ schedule with no defined chunksize and the \texttt{auto}~ schedule. When no chunksize is defined for \texttt{static}, the iterations are split as evenly as possible between all threads, this is efficient for evenly balanced loops but causes race conditions in imbalanced loops. The \texttt{auto} scheduler allows the compiler to decide the scheduling method to use and also allows the possibility of the scheduling method to change during runtime. Thus, if a loop has a large amount of iterations, this allows the scheduling to evolve to a method with good workload balance and low overheads. However, one must be careful when using \texttt{auto} as some compilers, such as \texttt{gcc}, are unable to decide on a scheduling method and will map \texttt{auto} to another scheduling method, such as \texttt{static}. 
+			
+			The results for these two tests are shown in Fig. \ref{fig:static_auto}.
 			
 			\begin{figure}
 				\centering
-				\includegraphics[scale=0.4]{./results/static_auto.pdf}
-				\caption{\textbf{Left:} runtime for loop 1 and 2 using static scheduling and serial execution. \textbf{Right:} runtime for loop 1 and 2 using auto scheduling and serial execution.}
+				\includegraphics[scale=0.45]{./results/static_auto.pdf}
+				\caption{Runtime for loop 1 and 2 using serial execution and parallel execution with \texttt{static} or \texttt{auto} scheduling methods.}
 				\label{fig:static_auto}
 			\end{figure}
 			
-			\subsubsection{Static}
-				With static scheduling, there is an increase in runtime for loop 1. This is due to the uneven workload of each thread. Some threads will require more time to finish their work, whereas some threads will have completed their iterations whilst the other threads are still working. This results in these threads having to wait for the other threads to finish. The resulting overhead of scheduling the loop and synchronising the threads at the end of the loop results in an increased runtime over the serial execution of the same loop. However, \texttt{static} decreased the runtime for loop 2. This, again, is due to the balance of the workload between threads. The thread which is assigned to the first 30 iterations of the parallelised outer loop will take longer to complete its iterations than the other threads, but, as shown in Fig. \ref{fig:loop_balance}, the distribution of long inner loops is such that the other threads will receive similar workloads. Hence, for the other threads, the work balance is only mildly imbalanced and thus the \texttt{static} schedule provides some speed up.
+			\subsubsection{Static} \label{sect:static_np}
+				With \texttt{static} scheduling, there is an increase in runtime for loop 1. This is due to the imbalanced workload of each thread. Some threads require more time to finish their work, whereas the other threads will have completed their assigned work. This results in the completed threads having to wait for the other threads to finish before all the threads can resynchronise at the end of the parallel region; this is an inefficient use of the hardware available. The resulting overhead of scheduling the loop and synchronising the threads at the end results in an increased runtime over the serial execution of loop 1. However, \texttt{static} scheduling results in a decreased runtime for loop 2. This, again, is due to the balance of the workload between the threads. The thread which is assigned the first 30 iterations of the parallelised outer loop will take longer to complete its assigned work than the other threads, but, as shown in Fig. \ref{fig:loop_balance}, the distribution of the longer inner loops is such that the work balance for the other threads is mildly imbalanced. This results in more efficient computation when using the \texttt{static} schedule. However, for both loops with the \texttt{static} we do not see a significant decrease in runtime considering the number of threads available. For example, with six threads being used by ARCHER, the runtime for loop 2 is decreased by around 33\%. This tells us that the \texttt{static} schedule is inefficient\footnote{The inefficiency will be due to some threads being idle whilst other threads are still completing their assigned work.} and inadequate to use for both loops.
 				
 			\subsubsection{Auto}
-				In both loops, the runtime was decreased with the use of the \texttt{auto} schedule. However, the performance gain introduced for loop 1 is not as large as the performance gain for loop 2. The lower performance gain for loop 1 is due to the overheads related to finding and using the best schedule to use for loop 1; the runtime introduced due to the overhead will be comparable to the execution time of the loop. The runtime for loop 2 is decreased by just over 50\%, which indicates that \texttt{auto} was able to find a scheduling method with low overheads. However, it must be noted that, as will be seen later in \S\ref{sect:chunksize}, the performance gain of the \texttt{auto} schedule is not as good as choosing a suitable schedule, even when using a \texttt{static} schedule with $N/p$ chunksize.
+				With the \texttt{auto} schedule, the runtime for both loops is decreased. However, the performance gain for loop 1 is much smaller than the performance gain for loop 2. The lower performance for loop 1 is most likely due to the overheads of finding and using the best schedule to use for loop 1; the extra runtime introduced due to any overheads related to the scheduling of work will be comparable to the runtime required to execute the code. The runtime for loop 2 is decreased by just over 50\%, which indicates that \texttt{auto} was able to find a scheduling method with low overheads. However, it must be noted that, as will be seen later in \S\ref{sect:chunksize}, the performance gain of the \texttt{auto} schedule is not as great as when compiled with a suitable schedule, such as \texttt{dynamic}.
 		
 		\subsection{Chunksize} \label{sect:chunksize}
-			For these tests the chunksize for the \texttt{static}, \texttt{dynamic} and \texttt{guided} schedules is changed to investigate the relationship between runtime and chunksize. As before, the tests were conducted using six threads on ARCHER. The results for these tests can be found in Fig. \ref{fig:chunksize}. 
-		
-		
+			For these tests the chunksize for the \texttt{static}, \texttt{dynamic} and \texttt{guided} schedules is changed to investigate the relationship between runtime and chunksize. As before, the tests were conducted using six threads on ARCHER, with chunksizes of $1, 2, 4, 8, 16, 32, 64$.
+			
+			The results for these tests can be found in Fig. \ref{fig:chunksize}. 
+			
 			\begin{figure}
 				\centering
-				\includegraphics[angle=90, scale=0.5]{./results/chunksize.pdf}
-				\caption{The execution time against the chunksize of the \texttt{static}, \texttt{dynamic} and \texttt{guided} schedulers for loop 1 and loop 2.}
+				\includegraphics[scale=0.45]{./results/chunksize.pdf}
+				\caption{The speed up ratio, $T_{1}/T_{chunk}$, against the chunksize of the \texttt{static}, \texttt{dynamic} and \texttt{guided} schedulers for loop 1 and loop 2. The solid red line, without any markers, represents the serial execution of each loop.}
 				\label{fig:chunksize}
 			\end{figure}
 			
 			\subsubsection{Loop 1} \label{sect:loop1_chunks}
+				For loop 1, Fig. \ref{fig:chunksize} shows that for \texttt{guided} and \texttt{dynamic} schedules, changing the chunksize does not dramatically change the performance of the scheduling methods. However, it shows that changing the chunksize of the \texttt{static} schedule can drastically change the performance of this scheduling method. 
+				
+				When \texttt{static} is used, we can see a performance increase comparable to \texttt{dynamic} and \texttt{guided} for smaller chunksizes. However, when the chunksize is increased, the performance of the \texttt{static} scheduler is shown to decrease with chunksize, where with a chunksize of around 48, the performance of the parallel execution is worse than with serial execution ($T_{1}$). This decrease in performance is due to the poor work balance of loop 1, as mentioned earlier in \S\ref{sect:static_np}. For smaller chunksizes, the imbalance of the work does not severely effect the performance as, for example, with a chunksize of one with two threads, we can expect thread 0 to be assigned iteration 1 and thread 1 to be iteration 2, and so on alternating between threads. This will lead to a more balanced load for the two threads than for example with a chunksize of 32. For this chunksize, thread 0 will assigned to the first 32 iterations and thread 1 to the next 32, and so on. With larger chunksizes, the work balance between threads becomes more imbalanced and thus results in race conditions and threads being idle whilst other threads are still executing. Thus for loops such as loop 1, we should be careful with using larger chunksizes for the \texttt{static} schedule. However, the overhead associated with scheduling for larger chunksizes is smaller than for smaller chunksizes, thus for loops with a large amount of iterations to be run in parallel, a compromise for chunksize will be required for execution time and the overhead required for the schedule.
+
+				However, when \texttt{dynamic} and \texttt{guided} scheduling is used, there is a relatively constant level of performance when varying the chunksize. For both of these schedules, each thread executes a chunk of the iterations and then requests the next chunk of iterations to execute. However, whilst the chunksizes remain constant with the \texttt{dynamic} scheduler, the chunksize for the \texttt{guided} schedules begins as $n/p$ and becomes progressively smaller as the number of iterations left decreases, where the chunksize will limit itself to a specified minimum chunksize; however the last iteration may be smaller than this minimum chunksize. For example, if we start with a chunksize of 64 and state a minimum chunksize of eight, we can expect the final batch of chunks executed to be eight iterations large or smaller for the final chunk. Fig. \ref{fig:chunksize} shows that there is a minor performance difference between the two schedules. For smaller chunksizes, \texttt{guided} has a greater performance gain than \texttt{dynamic}, but as chunksizes increases, the performance gap between the two scheduling methods decreases. We can, in general, expect better performance for unbalanced loops from \texttt{guided} scheduling due to the larger chunksizes at the beginning of the scheduling reducing the overhead required, and the smaller chunks near the end ``filling in'' the remaining work to be done. This results in the \texttt{guided} schedule being especially good for loops where there is a large work imbalance between the first and finial iterations of a loop. However, \texttt{dynamic} scheduling is also efficient at dealing with imbalanced work loads, as can be seen by the small performance gap between \texttt{dynamic} and \texttt{guided}, as each thread is idle for less time, thus the scheduler makes more efficient use of the hardware available. However, for a small amount of iterations, the use of \texttt{dynamic} and \texttt{guided} scheduling may increase runtime as there is significantly more overhead required for these scheduling methods. 
+				
+				From these tests, it was thus found that the best schedule to use for loop 1 is the \texttt{guided} schedule, with a chunksize of four.
 
 			\subsubsection{Loop 2} \label{sect:loop2_chunks}
-			
-		
+				Compared to loop 1, loop 2 benefits greater from the scheduling methods used thus far. Fig. \ref{fig:chunksize} shows that there is no discernible performance difference as the chunksize is changed for the \texttt{guided} schedule, as with loop 1. However,  both the \texttt{static} and \texttt{dynamic} schedules performance vary greatly with chunksize, where both schedulers' performance declines rapidly once the chunksize advances past a ``sweet spot''.
+				
+				The \texttt{guided} schedule offers no real performance difference with the different chunksizes used. This will be due to how the \texttt{guided} schedule functions by starting off with large chunks to lower the overheads and reducing the chunksize, which helps when a loop is imbalanced. However, since loop 2 is not as imbalanced as loop 1, a small chunksize does not help balance the workload as well between threads and it will introduce a larger overhead.
+				
+				The \texttt{static} scheduler on the other hand provides a good performance boost when used with a chunksize of four; which peaks with a speed up ratio of 4.52. However, for chunksizes smaller and larger than four we see worse performance gain. For larger chunksizes, the lower performance will be due to poor work balance between the threads, as the thread assigned with the first 30 iterations of loop 2, which is the most loaded part of loop 2 (see Fig. \ref{fig:loop_balance}), will take longer to finish its assigned work which would result in idle thread whilst the thread is still executing. This results in inefficient computation and worse performance gain over other chunksizes and scheduling choices. We also see lower performance gain for smaller chunksizes which could be due to the overhead related to scheduling the smaller chunksizes. However, with small chunksizes, \texttt{static} still provides better performance than the \texttt{guided} schedule for all choices of minimum chunksize.
+											
+				Finally, the \texttt{dynamic} schedule provides the best performance gain for loop 2 when a chunksize of eight is used. However, the performance gap between the smaller chunksizes is very small and thus any chunksize below eight would be a good choice to use. When the chunksize is larger than eight, Fig. \ref{fig:chunksize} shows that the performance of \texttt{dynamic} scheduling decreases. The performance decrease occurs due to the lack of flexibility the scheduler has for larger chunksizes.  With larger chunksizes, the scheduler is not able to ``fill in'' the gaps, but instead must execute a large chunk before it can move onto the next chunk. This can result in threads executing less chunks than other threads resulting in poor work balance and inefficient use of the hardware available. However, with smaller sized chunks, threads will, in general, be executing chunks for less time and thus will be executing more chunks in general. This provides better a better and more flexible framework for managing the work balance between threads.
+							
+				For these tests, it was thus found that the best schedule to use for loop 2 is the \texttt{dynamic} schedule, with a chunksize of 8.
+											
 		\subsection{Number of Threads}
-			In \S\ref{sect:loop1_chunks} and \S\ref{sect:loop2_chunks} it was found that the best schedule for six threads for loop 1 is \texttt{guided, 4} and \texttt{dynamic, 8} for loop 2. In this section, I compare the speed up for these schedules compared to the number of threads in use. The results for these tests are in Fig. \ref{fig:n_threads}.
+			In \S\ref{sect:loop1_chunks} and \S\ref{sect:loop2_chunks} it was found that the best schedule for six threads for loop 1 is \texttt{guided, 4} and \texttt{dynamic, 8} for loop 2. In this section, I compare the performance difference when using 1, 2, 3, 6, 12 and 24 threads on ARCHER. Both schedulers performance will be compared for both loops.
+			
+			The results for these tests are in Fig. \ref{fig:n_threads}.\
 			
 			\begin{figure}
 				\centering
-				\includegraphics[angle=90, scale=0.5]{./results/speedup.pdf}
+				\includegraphics[scale=0.45]{./results/speedup.pdf}
 				\caption{The speed up ratio, $T_{1}/T_{p}$, against the number of threads of the \texttt{guided, 4} and \texttt{dynamic, 8} schedulers for loop 1 and loop 2. The red line corresponds to base performance, i.e. serial execution.}
 				\label{fig:n_threads}
 			\end{figure}
 			
-	
-	
+			\subsubsection{Guided, 4}
+				The \texttt{guided} schedule with a chunksize of 4 was found to be the best schedule for loop 1. However, we can see for loop 1 when we use less than six threads, the scheduler negatively impacts the execution time of the loop.
+			
+			
+			\subsubsection{Dynamic, 8}
+			
+			
 	\section{Affinity Scheduler}
 		\subsection{Introduction}
-		
+			The scheduler implemented for this coursework works similar to the \texttt{dynamic} and \texttt{guided} schedulers provided by OMP. When implemented correctly, the affinity scheduler will distribute all available iterations to each thread as evenly as possible, known as a thread's local set. Each thread will then execute chunks of size $n_{local}/p$ until there are no chunks left to execute in a thread's local set. The thread will then determine which of the remaining executing threads has the most iterations remaining in its local set and take a fraction $n_{local}/p$ to execute itself. By doing this, each thread should remain working until there are no chunks left to be executed.
+			
+			To implement this method correctly, the threads have to be synchronised after each thread has finished executed its assigned chunk. Thus, we will be introducing an overhead by doing this but as threads should remain working throughout the execution of the entire loop, it's expected that the affinity scheduler will still be more efficient than the serial execution or \texttt{static} scheduling methods discussed earlier.
+			
 		\subsection{Implementation}
 		
 		\subsection{Performance}
+		
+			\begin{figure}
+				\centering
+				\includegraphics[scale=0.45]{./results/affinity_comparison.pdf}
+				\caption{}
+				\label{fig:affinity_comparison}
+			\end{figure}
 		
 	
 	\section{Conclusion}

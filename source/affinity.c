@@ -4,6 +4,13 @@
 
 #include "loops.h"
 
+/* **************************************************************************
+ *
+ * The function containing the parallel region -- assigns each thread a local
+ * set of iterations and then begins the algorithm which allows threads to
+ * take work from other threads.
+ *
+ * ************************************************************************** */
 void affinity_loop(void (*loop_func)(int, int))
 {
   int n_threads = omp_get_max_threads();
@@ -29,6 +36,7 @@ void affinity_loop(void (*loop_func)(int, int))
      * is > N - 1, the upper limit is set to N - 1.
      */
     thread_lowers[thread_id] = thread_id * local_set_iters;
+
     if ((thread_uppers[thread_id] = \
       (thread_id + 1) * local_set_iters - 1) > N - 1)
     {
@@ -36,12 +44,10 @@ void affinity_loop(void (*loop_func)(int, int))
     }
 
     /* While loop - the threads will keep doing work until there is no more
-     * work to steal from any other thread
-     *
+     * work to steal from any other thread.
      * The loop function will originally be assigned no chunks to do, as the
-     * first assigned chunks will be done in share_iterations
+     * chunks are assigned in the share_iterations loop.
      */
-
     chunk_lowers[thread_id] = chunk_uppers[thread_id] = 0;
 
     while (thread_affininty_check != STOP)
@@ -110,8 +116,11 @@ int share_iterations(int n_threads, int current_thread, int *thread_lowers,
 
   /* The number of iterations to take from the loaded thread will be the
   * fraction 1/p * iterations left ROUNDED UP -- this should avoid the situation
-  * where the iterations will round down to 0 and thus the program will never
-  * end
+  * where the iterations will round to 0 and cause the program to not exit when
+  * 1 iteration is left to be done.
+  * Assign the lower and upper boundary for the chunk to be executed. Also
+  * increment a thread's local iteration set to indicate that a chunk has
+  * been assigned to a thread
   */
   iters_to_take = (int) ceil(loaded_thread[1] * n_iters_share);
 
@@ -137,6 +146,7 @@ int *find_loaded_thread(int n_threads, int *loaded_thread, int *thread_lowers,
 {
   int iters_left;
 
+  loaded_thread[1] = 0;
   for (int thread = 0; thread < n_threads; thread++)
   {
     iters_left = thread_uppers[thread] - thread_lowers[thread];

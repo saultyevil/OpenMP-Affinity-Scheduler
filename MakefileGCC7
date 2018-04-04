@@ -2,8 +2,8 @@
 TARGET_EXEC ?= loops_affinity
 
 # Macros for CC
-CC = cc
-CFLAGS = -O3
+CC = gcc-7
+CFLAGS = -O3 -fopenmp -lm -g
 LIBS =
 
 SRC = ./source/affinity.c \
