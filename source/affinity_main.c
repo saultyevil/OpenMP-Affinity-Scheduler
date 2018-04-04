@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <omp.h>
 
@@ -14,7 +15,6 @@
  * my Makefile and it should work no with no issues.
  *
  * ************************************************************************** */
-
 int main(void)
 {
   double start, stop, main_start, main_stop, loop1_time, loop2_time, total_time;
