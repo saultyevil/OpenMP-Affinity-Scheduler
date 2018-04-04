@@ -1,8 +1,11 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
 #include <omp.h>
 
 #include "loops.h"
+
+int DEBUG = FALSE;  // debug variable for showing what the tread is doing
 
 /* **************************************************************************
  *
@@ -129,6 +132,12 @@ int share_iterations(int n_threads, int current_thread, int *thread_lowers,
     iters_to_take;
 
   thread_lowers[loaded_thread[0]] += iters_to_take;
+
+  if (DEBUG == TRUE)
+  {
+    printf("Thread %d taking %d iters from thread %d (%d iters left).\n",
+      current_thread, iters_to_take, loaded_thread[0], loaded_thread[1]);
+  }
 
   free(loaded_thread);
   return CONTINUE;
