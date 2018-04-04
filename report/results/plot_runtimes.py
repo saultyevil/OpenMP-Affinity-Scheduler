@@ -45,45 +45,13 @@ fig.tight_layout()
 plt.savefig('chunksize.pdf')
 plt.close()
 
-
 """
-DATA FOR CHANGING THE NUMBER OF THREADS FOR THE BEST SCHEDULE
+T1/TA graphs - best schedule threads
 """
 
 data_n_threads = np.loadtxt('time_output_n_threads.txt')
 guided_n_threads = data_n_threads[data_n_threads[:, 0] == 3, :]
 dynamic_n_threads = data_n_threads[data_n_threads[:, 0] == 2, :]
-
-fig = plt.figure(figsize=(20, 10))
-ax1 = fig.add_subplot(121)
-ax1.plot(guided_n_threads[:, 2], guided_n_threads[:, 3], 'x-', label='Loop 1')
-ax1.plot(guided_n_threads[:, 2], guided_n_threads[:, 4], 'D-', label='Loop 2')
-ax1.set_xlabel('Number of Threads')
-ax1.set_ylabel('Run time (s)')
-ax1.set_xlim(0, 25)
-ax1.set_title('Guided, 4')
-ax1.legend(fontsize='x-large')
-ax1.grid()
-
-ax2 = fig.add_subplot(122)
-ax2.plot(dynamic_n_threads[:, 2], dynamic_n_threads[:, 3], 'x-',
-         label='Loop 1')
-ax2.plot(dynamic_n_threads[:, 2], dynamic_n_threads[:, 4], 'D-',
-         label='Loop 2')
-ax2.set_xlabel('Number of Threads', fontsize='x-large')
-ax2.set_ylabel('Run time (s)', fontsize='x-large')
-ax2.set_xlim(0, 25)
-ax2.set_title('Dynamic, 8', fontsize='x-large')
-ax2.legend(fontsize='x-large')
-ax2.grid()
-
-fig.tight_layout()
-plt.savefig('best_schedules.pdf')
-plt.close()
-
-"""
-T1/TA graphs
-"""
 
 loop1_speedup_guided = loop1_avg/guided_n_threads[:, 3]
 loop2_speedup_guided = loop2_avg/guided_n_threads[:, 4]
@@ -192,35 +160,10 @@ plt.savefig('loop_balance.pdf')
 plt.close()
 
 """
-plots for the affininty scheduler
+affinity comparison
 """
 
 affinity_data = np.loadtxt('affinity_time_output.txt')
-
-fig = plt.figure(figsize=(20, 10))
-ax1 = fig.add_subplot(121)
-ax1.plot(affinity_data[:, 0], affinity_data[:, 1], 'x-')
-ax1.set_xlabel(r'Threads, $p$', fontsize='x-large')
-ax1.set_ylabel('Run time (s)', fontsize='x-large')
-ax1.set_xlim(0, 25)
-ax1.set_title('Loop 1', fontsize='x-large')
-ax1.grid()
-
-ax2 = fig.add_subplot(122)
-ax2.plot(affinity_data[:, 0], affinity_data[:, 2], 'x-')
-ax2.set_xlabel(r'Threads, $p$', fontsize='x-large')
-ax2.set_ylabel('Run time (s)', fontsize='x-large')
-ax2.set_xlim(0, 25)
-ax2.set_title('Loop 2', fontsize='x-large')
-ax2.grid()
-
-fig.tight_layout()
-plt.savefig('affinity_runtime.pdf')
-plt.close()
-
-"""
-affinity comparison
-"""
 
 fig = plt.figure(figsize=(15, 20))
 ax1 = fig.add_subplot(211)
