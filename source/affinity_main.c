@@ -12,7 +12,7 @@
  * Sometimes the program seg faults before it even reaches the loop
  * repetitions on OS X, but not on Ubuntu or ARCHER. But it works if you try
  * to run it a few times ¯\_(ツ)_/¯ -- turns out it was something to do with
- * my Makefile and it should work no with no issues.
+ * my Makefile and it should work now with no issues.
  *
  * ************************************************************************** */
 int main(void)

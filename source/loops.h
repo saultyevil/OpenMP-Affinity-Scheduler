@@ -8,8 +8,12 @@
 #define REPS 100
 
 /* constants for work sharing function returns */
-#define CONTINUE 1
-#define STOP -1
+#define CONTINUE -1
+#define STOP -2
+
+/* constant for DEBUG paramteres */
+#define TRUE 1
+#define FALSE 0
 
 /* **************************************************************************
  *

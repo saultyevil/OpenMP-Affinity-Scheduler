@@ -21,8 +21,7 @@ void affinity_loop(void (*loop_func)(int, int))
 
   /* These arrays are used to store the upper and lower limits for the current
    * threads and chunks. Initialise the arrays here because I don't want them to
-   * be private to a thread
-   */
+   * be private to a thread */
   int *thread_lowers = malloc(sizeof(int) * n_threads);
   int *thread_uppers = malloc(sizeof(int) * n_threads);
   int *chunk_lowers = malloc(sizeof(int) * n_threads);
@@ -36,12 +35,11 @@ void affinity_loop(void (*loop_func)(int, int))
     int thread_id = omp_get_thread_num();
 
     /* Calculate the lower and upper limits for each thread. If the upper limit
-     * is > N - 1, the upper limit is set to N - 1.
-     */
+     * is > N - 1, the upper limit is set to N - 1. */
     thread_lowers[thread_id] = thread_id * local_set_iters;
 
     if ((thread_uppers[thread_id] = \
-      (thread_id + 1) * local_set_iters - 1) > N - 1)
+      (thread_id + 1) * local_set_iters) > N - 1)
     {
       thread_uppers[thread_id] = N - 1;
     }
@@ -49,8 +47,7 @@ void affinity_loop(void (*loop_func)(int, int))
     /* While loop - the threads will keep doing work until there is no more
      * work to steal from any other thread.
      * The loop function will originally be assigned no chunks to do, as the
-     * chunks are assigned in the share_iterations loop.
-     */
+     * chunks are assigned in the share_iterations loop. */
     chunk_lowers[thread_id] = chunk_uppers[thread_id] = 0;
 
     while (thread_affininty_check != STOP)
@@ -87,21 +84,18 @@ int share_iterations(int n_threads, int current_thread, int *thread_lowers,
 
   /* Loaded thread is an array of size 2. The first entry will be the thread ID
   * of the thread to take work from and the second entry will be the number of
-  * iterations it has left to do.
-  */
+  * iterations it has left to do. */
   int *loaded_thread = malloc(sizeof(int) * 2);
 
   /* If there is work to do in the current thread's local iteration set, do
-   * work on its own set
-   */
+   * work on its own set */
   if ((loaded_thread[1] = \
     thread_uppers[current_thread] - thread_lowers[current_thread]) >  0)
   {
     loaded_thread[0] = current_thread;
   }
   /* Else the thread has no work left to do in its local iteration set, so take
-   * work from other threads
-   */
+   * work from other threads */
   else
   {
     loaded_thread = find_loaded_thread(n_threads, loaded_thread, thread_lowers,\
@@ -109,8 +103,7 @@ int share_iterations(int n_threads, int current_thread, int *thread_lowers,
   }
 
   /* If there is no work in the thread's loacal set, or in another thread's
-   * local set, find_loaded_thread will return STOP and all the work is done
-   */
+   * local set, find_loaded_thread will return STOP and all the work is done */
   if (loaded_thread[0] == STOP)
   {
     free(loaded_thread);
@@ -123,8 +116,7 @@ int share_iterations(int n_threads, int current_thread, int *thread_lowers,
   * 1 iteration is left to be done.
   * Assign the lower and upper boundary for the chunk to be executed. Also
   * increment a thread's local iteration set to indicate that a chunk has
-  * been assigned to a thread
-  */
+  * been assigned to a thread. */
   iters_to_take = (int) ceil(loaded_thread[1] * n_iters_share);
 
   chunk_lowers[current_thread] = thread_lowers[loaded_thread[0]];
