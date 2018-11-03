@@ -9,3 +9,8 @@ $ make
 ``` 
 
 The directory `loops` contains the original serial version of the benchmark loops, `loops.c`,  and a version of `loops.c` which uses the default OpenMP schedulers which can be used by setting the OMP envrionment variable `export OMP_SCHEDULE=type,chunk_size` at runtime, where the available schedule types are `auto`, `dynamic`, `static`, and `guided`. The `report` directory contains a tex file for the accompaning report and a directory `results` containing all of the results used in the report, as well as a Python script to plot the results.
+
+
+## Acknowledgements 
+
+I would like to acknowledge financial support from the EPSRC Centre for Doctoral Training in Next Generation Computational Modelleing grant EP/L015382/1.
