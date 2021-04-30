@@ -1,6 +1,8 @@
+Note, this was created very early on in my programming career - pls ignore the Makefile mess. I wish C had a better build system.
+
 A scheduling method developed for ACM2 which allows threads to share work between other threads once a thread has finished its assigned work in its own local set of iterations. The directory `source` contains all of the source code for the affinity scheduler.
 
-To build the scheduler, use the Makefile of your choice. If you are building on OS X, you will need to use gcc-7 or some other C compiler which supports the -fopenmp flag as the version of Clang which ships with OS X by default does not. Otherwise, if you are using L00nix, you can use `MakefileGCC` and if you are building on a machine where the Cray Compiler is available, use `MakefileCC` to build, i.e. to build and run using GCC7 (such as on OS X)
+To build the scheduler, use the Makefile of your choice. If you are building on OS X, you will need to use gcc-7 or some other C compiler which supports the -fopenmp flag as the version of Clang which ships with OS X by default does not. Otherwise, if you are using Linux, you can use `MakefileGCC` and if you are building on a machine where the Cray Compiler is available, use `MakefileCC` to build, i.e. to build and run using GCC7 (such as on OS X)
 
 ```
 $ cp MakefileGCC7 Makefile
